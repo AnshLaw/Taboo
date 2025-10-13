@@ -17,6 +17,7 @@ export default function GameScreen() {
   const [turnActive, setTurnActive] = useState(false)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
   const [showBonusNotification, setShowBonusNotification] = useState(false)
+  const [usedWordIndices, setUsedWordIndices] = useState<Set<number>>(new Set())
 
   const currentTeam = gameState.teams[gameState.currentTeamIndex]
   const currentDescriber = currentTeam.players[gameState.currentDescriberIndex[gameState.currentTeamIndex]]
@@ -134,9 +135,47 @@ export default function GameScreen() {
     return () => clearTimeout(timer)
   }, [turnActive, timeRemaining, isMyTurn])
 
+  // Fisher-Yates shuffle algorithm for better randomization
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const shuffled = [...array]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    return shuffled
+  }
+
   const selectWords = (count: number) => {
-    const shuffled = [...wordDatabase].sort(() => Math.random() - 0.5)
-    return shuffled.slice(0, count)
+    // Get indices of words we haven't used yet
+    const availableIndices = wordDatabase
+      .map((_, index) => index)
+      .filter(index => !usedWordIndices.has(index))
+    
+    // If we've used more than 80% of words, reset the used words set
+    if (availableIndices.length < wordDatabase.length * 0.2) {
+      setUsedWordIndices(new Set())
+      return selectWords(count) // Recursively call with reset set
+    }
+    
+    // Shuffle available indices
+    const shuffledIndices = shuffleArray(availableIndices)
+    
+    // Select the requested number of words
+    const selectedIndices = shuffledIndices.slice(0, count)
+    const selectedWords = selectedIndices.map(index => wordDatabase[index])
+    
+    // Mark these words as used
+    setUsedWordIndices(prev => {
+      const newSet = new Set(prev)
+      selectedIndices.forEach(index => newSet.add(index))
+      return newSet
+    })
+    
+    // Sort by difficulty for better gameplay (easy to hard)
+    return selectedWords.sort((a, b) => {
+      const difficultyOrder: { [key: string]: number } = { easy: 0, medium: 1, hard: 2 }
+      return difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty]
+    })
   }
 
   const startTurn = () => {
@@ -243,10 +282,19 @@ export default function GameScreen() {
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'easy': return 'border-green-500 bg-green-500/10'
-      case 'medium': return 'border-yellow-500 bg-yellow-500/10'
-      case 'hard': return 'border-red-500 bg-red-500/10'
-      default: return 'border-gray-500 bg-gray-500/10'
+      case 'easy': return 'border-green-500/50 bg-green-500/10 hover:border-green-500/70'
+      case 'medium': return 'border-yellow-500/50 bg-yellow-500/10 hover:border-yellow-500/70'
+      case 'hard': return 'border-red-500/50 bg-red-500/10 hover:border-red-500/70'
+      default: return 'border-gray-500/50 bg-gray-500/10 hover:border-gray-500/70'
+    }
+  }
+
+  const getDifficultyBadge = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy': return { emoji: '🟢', color: 'text-green-400' }
+      case 'medium': return { emoji: '🟡', color: 'text-yellow-400' }
+      case 'hard': return { emoji: '🔴', color: 'text-red-400' }
+      default: return { emoji: '⚪', color: 'text-gray-400' }
     }
   }
 
@@ -528,7 +576,13 @@ export default function GameScreen() {
                       }`}
                     >
                       <div className="text-center">
-                        <div className="font-bold text-sm sm:text-base md:text-lg lg:text-xl mb-1 sm:mb-2 md:mb-3 break-words">{wordObj.word}</div>
+                        <div className="flex items-center justify-center gap-1 mb-1">
+                          <span className="text-xs">{getDifficultyBadge(wordObj.difficulty).emoji}</span>
+                          <span className={`text-[10px] font-medium ${getDifficultyBadge(wordObj.difficulty).color}`}>
+                            {wordObj.difficulty.toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="font-bold text-sm sm:text-base md:text-lg lg:text-xl mb-1 sm:mb-2 break-words">{wordObj.word}</div>
                         <div className="mt-1 sm:mt-2 text-[10px] sm:text-xs md:text-sm font-semibold flex items-center justify-center gap-0.5 sm:gap-1">
                           <Zap className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${!isGuessed && 'animate-pulse'}`} />
                         {wordObj.points}pts
