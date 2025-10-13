@@ -113,9 +113,12 @@ export default function GameScreen() {
   }
 
   const handleGuess = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.target.value.trim().toUpperCase()
+    const input = e.target.value.toUpperCase()
     setGuess(input)
+  }
 
+  const submitGuess = () => {
+    const input = guess.trim().toUpperCase()
     if (input.length === 0) return
 
     for (const wordObj of currentWords) {
@@ -141,6 +144,12 @@ export default function GameScreen() {
         }
         break
       }
+    }
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      submitGuess()
     }
   }
 
@@ -176,15 +185,16 @@ export default function GameScreen() {
   }
 
   return (
-    <div className="space-y-6 relative">
+    <div className="space-y-4 md:space-y-6 relative">
       {/* Leave Game Button */}
       <div className="absolute top-0 right-0 z-10">
         <button
           onClick={() => setShowLeaveConfirm(true)}
-          className="px-4 py-2 glass-strong rounded-xl hover:bg-red-500/20 transition-colors flex items-center gap-2 text-red-400"
+          className="px-3 md:px-4 py-2 glass-strong rounded-xl hover:bg-red-500/20 transition-colors flex items-center gap-2 text-red-400 text-sm md:text-base"
         >
           <LogOut className="w-4 h-4" />
-          Leave Game
+          <span className="hidden sm:inline">Leave Game</span>
+          <span className="sm:hidden">Leave</span>
         </button>
       </div>
 
@@ -229,32 +239,32 @@ export default function GameScreen() {
       </AnimatePresence>
 
       {/* Header - Scores */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-2 md:gap-4">
         <motion.div
           initial={{ x: -20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
-          className="glass-strong rounded-xl p-4 border-2 border-blue-500/30"
+          className="glass-strong rounded-xl p-3 md:p-4 border-2 border-blue-500/30"
         >
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-gray-400">Team 1</div>
-              <div className="text-3xl font-bold text-blue-400">{gameState.teams[0].score}</div>
+              <div className="text-xs md:text-sm text-gray-400">Team 1</div>
+              <div className="text-2xl md:text-3xl font-bold text-blue-400">{gameState.teams[0].score}</div>
             </div>
-            <Trophy className="w-8 h-8 text-blue-400" />
+            <Trophy className="w-6 h-6 md:w-8 md:h-8 text-blue-400" />
           </div>
         </motion.div>
 
         <motion.div
           initial={{ x: 20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
-          className="glass-strong rounded-xl p-4 border-2 border-red-500/30"
+          className="glass-strong rounded-xl p-3 md:p-4 border-2 border-red-500/30"
         >
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-gray-400">Team 2</div>
-              <div className="text-3xl font-bold text-red-400">{gameState.teams[1].score}</div>
+              <div className="text-xs md:text-sm text-gray-400">Team 2</div>
+              <div className="text-2xl md:text-3xl font-bold text-red-400">{gameState.teams[1].score}</div>
             </div>
-            <Trophy className="w-8 h-8 text-red-400" />
+            <Trophy className="w-6 h-6 md:w-8 md:h-8 text-red-400" />
           </div>
         </motion.div>
       </div>
@@ -264,27 +274,27 @@ export default function GameScreen() {
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="glass-strong rounded-2xl p-8 text-center"
+          className="glass-strong rounded-2xl p-6 md:p-8 text-center"
         >
-          <div className={`text-6xl mb-4 ${gameState.currentTeamIndex === 0 ? 'text-blue-400' : 'text-red-400'}`}>
+          <div className={`text-4xl md:text-6xl mb-4 ${gameState.currentTeamIndex === 0 ? 'text-blue-400' : 'text-red-400'}`}>
             {currentTeam.name}'s Turn
           </div>
-          <div className="text-2xl mb-6">
+          <div className="text-xl md:text-2xl mb-6">
             Describer: <span className="font-bold">{currentDescriber}</span>
           </div>
-          <div className="text-gray-400 mb-8">
+          <div className="text-gray-400 mb-6 md:mb-8 text-sm md:text-base">
             Round {gameState.round} of {gameState.maxRounds}
           </div>
           {isMyTurn && (
             <button
               onClick={startTurn}
-              className="px-12 py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-xl font-bold text-xl transition-all transform hover:scale-105"
+              className="px-8 md:px-12 py-3 md:py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-xl font-bold text-lg md:text-xl transition-all transform hover:scale-105"
             >
               Start Turn
             </button>
           )}
           {!isMyTurn && (
-            <div className="text-gray-400">Waiting for {currentDescriber} to start...</div>
+            <div className="text-gray-400 text-sm md:text-base">Waiting for {currentDescriber} to start...</div>
           )}
         </motion.div>
       )}
@@ -296,18 +306,18 @@ export default function GameScreen() {
           <motion.div
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="glass-strong rounded-xl p-6 text-center"
+            className="glass-strong rounded-xl p-4 md:p-6 text-center"
           >
-            <div className="flex items-center justify-center gap-4">
-              <Clock className={`w-8 h-8 ${timeRemaining <= 10 ? 'text-red-500 animate-pulse' : 'text-blue-400'}`} />
-              <div className={`text-5xl font-bold ${timeRemaining <= 10 ? 'text-red-500 animate-pulse' : ''}`}>
+            <div className="flex items-center justify-center gap-3 md:gap-4">
+              <Clock className={`w-6 h-6 md:w-8 md:h-8 ${timeRemaining <= 10 ? 'text-red-500 animate-pulse' : 'text-blue-400'}`} />
+              <div className={`text-4xl md:text-5xl font-bold ${timeRemaining <= 10 ? 'text-red-500 animate-pulse' : ''}`}>
                 {timeRemaining}
               </div>
             </div>
           </motion.div>
 
           {/* Words Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3">
             <AnimatePresence>
               {currentWords.map((wordObj, index) => {
                 const isGuessed = guessedWords.includes(wordObj)
@@ -318,13 +328,13 @@ export default function GameScreen() {
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0, opacity: 0 }}
-                    className={`glass-strong rounded-xl p-4 border-2 ${getDifficultyColor(wordObj.difficulty)} ${
+                    className={`glass-strong rounded-xl p-3 md:p-4 border-2 ${getDifficultyColor(wordObj.difficulty)} ${
                       isGuessed ? 'opacity-30 line-through' : ''
                     }`}
                   >
                     <div className="text-center">
-                      <div className="font-bold text-xl mb-3">{wordObj.word}</div>
-                      <div className="mt-2 text-sm font-semibold">
+                      <div className="font-bold text-base md:text-xl mb-2 md:mb-3">{wordObj.word}</div>
+                      <div className="mt-2 text-xs md:text-sm font-semibold">
                         <Zap className="w-3 h-3 inline mr-1" />
                         {wordObj.points}pts
                       </div>
@@ -342,14 +352,23 @@ export default function GameScreen() {
               animate={{ y: 0, opacity: 1 }}
               className="glass-strong rounded-xl p-6"
             >
-              <input
-                type="text"
-                value={guess}
-                onChange={handleGuess}
-                placeholder="Type your guess..."
-                className="w-full px-6 py-4 bg-white/10 border-2 border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-400 text-xl text-center font-bold uppercase"
-                autoFocus
-              />
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={guess}
+                  onChange={handleGuess}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Type your guess..."
+                  className="flex-1 px-4 md:px-6 py-3 md:py-4 bg-white/10 border-2 border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-400 text-lg md:text-xl text-center font-bold uppercase"
+                  autoFocus
+                />
+                <button
+                  onClick={submitGuess}
+                  className="px-6 md:px-8 py-3 md:py-4 bg-blue-500 hover:bg-blue-600 rounded-xl font-bold text-sm md:text-base transition-all transform hover:scale-105 whitespace-nowrap"
+                >
+                  Submit
+                </button>
+              </div>
             </motion.div>
           )}
 
@@ -358,7 +377,7 @@ export default function GameScreen() {
             <div className="flex gap-4 justify-center">
               <button
                 onClick={handleEndTurn}
-                className="px-8 py-4 bg-red-500 hover:bg-red-600 rounded-xl font-bold text-lg transition-all transform hover:scale-105"
+                className="px-6 md:px-8 py-3 md:py-4 bg-red-500 hover:bg-red-600 rounded-xl font-bold text-base md:text-lg transition-all transform hover:scale-105"
               >
                 End Turn
               </button>
@@ -368,14 +387,14 @@ export default function GameScreen() {
           {/* Stats */}
           <div className="glass rounded-xl p-4 flex justify-around text-center">
             <div>
-              <div className="text-2xl font-bold text-green-400">{guessedWords.length}</div>
-              <div className="text-sm text-gray-400">Words Guessed</div>
+              <div className="text-xl md:text-2xl font-bold text-green-400">{guessedWords.length}</div>
+              <div className="text-xs md:text-sm text-gray-400">Words Guessed</div>
             </div>
             <div>
-              <div className="text-2xl font-bold text-blue-400">
+              <div className="text-xl md:text-2xl font-bold text-blue-400">
                 {guessedWords.reduce((sum, w) => sum + w.points, 0)}
               </div>
-              <div className="text-sm text-gray-400">Points</div>
+              <div className="text-xs md:text-sm text-gray-400">Points</div>
             </div>
           </div>
         </>
@@ -386,25 +405,25 @@ export default function GameScreen() {
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="glass-strong rounded-2xl p-8 text-center"
+          className="glass-strong rounded-2xl p-6 md:p-8 text-center"
         >
-          <div className="text-4xl font-bold mb-6">Turn Complete! 🎉</div>
-          <div className="grid grid-cols-2 gap-6 mb-8">
+          <div className="text-3xl md:text-4xl font-bold mb-6">Turn Complete! 🎉</div>
+          <div className="grid grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
             <div>
-              <div className="text-5xl font-bold text-green-400">{guessedWords.length}</div>
-              <div className="text-gray-400">Words Guessed</div>
+              <div className="text-4xl md:text-5xl font-bold text-green-400">{guessedWords.length}</div>
+              <div className="text-gray-400 text-sm md:text-base">Words Guessed</div>
             </div>
             <div>
-              <div className="text-5xl font-bold text-blue-400">
+              <div className="text-4xl md:text-5xl font-bold text-blue-400">
                 {guessedWords.reduce((sum, w) => sum + w.points, 0)}
               </div>
-              <div className="text-gray-400">Points Earned</div>
+              <div className="text-gray-400 text-sm md:text-base">Points Earned</div>
             </div>
           </div>
           {isMyTurn && (
             <button
               onClick={handleNextTurn}
-              className="px-12 py-4 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 rounded-xl font-bold text-xl transition-all transform hover:scale-105"
+              className="px-8 md:px-12 py-3 md:py-4 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 rounded-xl font-bold text-lg md:text-xl transition-all transform hover:scale-105"
             >
               Next Turn
             </button>

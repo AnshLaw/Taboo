@@ -26,23 +26,23 @@ export default function RoomScreen() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
+    <div className="flex items-center justify-center min-h-screen p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 md:mb-8">
           <motion.h1
             initial={{ scale: 0.5 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 200 }}
-            className="text-6xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent"
+            className="text-4xl md:text-6xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent"
           >
              TABOO
           </motion.h1>
-                  <p className="text-gray-300 text-lg">Inferno ne banayi hai 
+                  <p className="text-gray-300 text-base md:text-lg">Inferno ne banayi hai 
           </p>
           
           {/* Connection Status */}
@@ -66,18 +66,18 @@ export default function RoomScreen() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="glass-strong rounded-2xl p-8 space-y-4"
+            className="glass-strong rounded-2xl p-6 md:p-8 space-y-4"
           >
             <button
               onClick={() => setMode('create')}
-              className="w-full py-4 px-6 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-xl font-semibold text-white transition-all transform hover:scale-105 flex items-center justify-center gap-3"
+              className="w-full py-3 md:py-4 px-6 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-xl font-semibold text-white transition-all transform hover:scale-105 flex items-center justify-center gap-3 text-sm md:text-base"
             >
               <Users className="w-5 h-5" />
               Create New Room
             </button>
             <button
               onClick={() => setMode('join')}
-              className="w-full py-4 px-6 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-xl font-semibold text-white transition-all transform hover:scale-105 flex items-center justify-center gap-3"
+              className="w-full py-3 md:py-4 px-6 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-xl font-semibold text-white transition-all transform hover:scale-105 flex items-center justify-center gap-3 text-sm md:text-base"
             >
               <Users className="w-5 h-5" />
               Join Existing Room
@@ -90,9 +90,9 @@ export default function RoomScreen() {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="glass-strong rounded-2xl p-8"
+            className="glass-strong rounded-2xl p-6 md:p-8"
           >
-            <h2 className="text-2xl font-bold mb-6">Create Room</h2>
+            <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6">Create Room</h2>
             <form onSubmit={handleCreateRoom} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Your Name</label>
@@ -101,7 +101,7 @@ export default function RoomScreen() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Enter your name"
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-400"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-400 text-sm md:text-base"
                   maxLength={20}
                   required
                 />
@@ -110,14 +110,14 @@ export default function RoomScreen() {
                 <button
                   type="button"
                   onClick={() => setMode('select')}
-                  className="flex-1 py-3 px-6 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition-all"
+                  className="flex-1 py-3 px-4 md:px-6 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition-all text-sm md:text-base"
                 >
                   Back
                 </button>
                 <button
                   type="submit"
                   disabled={!connected}
-                  className="flex-1 py-3 px-6 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="flex-1 py-3 px-4 md:px-6 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm md:text-base"
                 >
                   Create
                 </button>
@@ -131,9 +131,9 @@ export default function RoomScreen() {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="glass-strong rounded-2xl p-8"
+            className="glass-strong rounded-2xl p-6 md:p-8"
           >
-            <h2 className="text-2xl font-bold mb-6">Join Room</h2>
+            <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6">Join Room</h2>
             <form onSubmit={handleJoinRoom} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">Your Name</label>
@@ -142,7 +142,7 @@ export default function RoomScreen() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Enter your name"
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400 text-sm md:text-base"
                   maxLength={20}
                   required
                 />
@@ -154,7 +154,7 @@ export default function RoomScreen() {
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                   placeholder="Enter 6-digit code"
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400 uppercase tracking-wider text-center text-xl font-mono"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-400 uppercase tracking-wider text-center text-lg md:text-xl font-mono"
                   maxLength={6}
                   required
                 />
@@ -163,14 +163,14 @@ export default function RoomScreen() {
                 <button
                   type="button"
                   onClick={() => setMode('select')}
-                  className="flex-1 py-3 px-6 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition-all"
+                  className="flex-1 py-3 px-4 md:px-6 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition-all text-sm md:text-base"
                 >
                   Back
                 </button>
                 <button
                   type="submit"
                   disabled={!connected}
-                  className="flex-1 py-3 px-6 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="flex-1 py-3 px-4 md:px-6 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm md:text-base"
                 >
                   Join
                 </button>
