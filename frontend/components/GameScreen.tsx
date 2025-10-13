@@ -16,6 +16,7 @@ export default function GameScreen() {
   const [timeRemaining, setTimeRemaining] = useState(60)
   const [turnActive, setTurnActive] = useState(false)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+  const [showBonusNotification, setShowBonusNotification] = useState(false)
 
   const currentTeam = gameState.teams[gameState.currentTeamIndex]
   const currentDescriber = currentTeam.players[gameState.currentDescriberIndex[gameState.currentTeamIndex]]
@@ -50,6 +51,13 @@ export default function GameScreen() {
     const handleTurnEnded = (data: any) => {
       setTurnActive(false)
       setGamePhase('turn-end')
+      // Sync guessed words from the describer to all players
+      if (data.guessedWords && !isMyTurn) {
+        setGuessedWords(data.guessedWords)
+      }
+      if (data.guessedByPlayer && !isMyTurn) {
+        setGuessedByPlayer(data.guessedByPlayer)
+      }
     }
 
     const handleNextTurn = (data: any) => {
@@ -68,12 +76,21 @@ export default function GameScreen() {
       leaveGame()
     }
 
+    const handleBonusWords = (data: any) => {
+      if (data.words) {
+        setCurrentWords(prev => [...prev, ...data.words])
+        setShowBonusNotification(true)
+        setTimeout(() => setShowBonusNotification(false), 3000)
+      }
+    }
+
     socket.on('word-guessed-sync', handleWordGuessed)
     socket.on('turn-started', handleTurnStarted)
     socket.on('turn-ended', handleTurnEnded)
     socket.on('next-turn-sync', handleNextTurn)
     socket.on('timer-sync', handleTimerSync)
     socket.on('host-left', handleHostLeft)
+    socket.on('bonus-words-sync', handleBonusWords)
 
     return () => {
       socket.off('word-guessed-sync', handleWordGuessed)
@@ -82,6 +99,7 @@ export default function GameScreen() {
       socket.off('next-turn-sync', handleNextTurn)
       socket.off('timer-sync', handleTimerSync)
       socket.off('host-left', handleHostLeft)
+      socket.off('bonus-words-sync', handleBonusWords)
     }
   }, [socket])
 
@@ -143,6 +161,16 @@ export default function GameScreen() {
           points: wordObj.points 
         })
         
+        // Add bonus words when 6 words are guessed correctly
+        if (newGuessed.length === 6) {
+          const bonusWords = selectWords(3)
+          setCurrentWords([...currentWords, ...bonusWords])
+          setShowBonusNotification(true)
+          setTimeout(() => setShowBonusNotification(false), 3000)
+          // Notify server about bonus words
+          socket?.emit('bonus-words-added', { roomCode, words: bonusWords })
+        }
+        
         // Add more words if running low
         const remaining = currentWords.length - newGuessed.length
         if (remaining <= 2) {
@@ -168,7 +196,9 @@ export default function GameScreen() {
       roomCode, 
       guessedCount: guessedWords.length,
       skippedCount: 0,
-      totalPoints
+      totalPoints,
+      guessedWords: guessedWords,
+      guessedByPlayer: guessedByPlayer
     })
   }
 
@@ -301,6 +331,24 @@ export default function GameScreen() {
         </motion.div>
       )}
 
+      {/* Bonus Words Notification */}
+      <AnimatePresence>
+        {showBonusNotification && (
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0, y: -20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.8, opacity: 0, y: -20 }}
+            className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 glass-strong rounded-2xl p-6 border-4 border-yellow-500 bg-gradient-to-r from-yellow-500/20 to-orange-500/20"
+          >
+            <div className="text-center">
+              <div className="text-4xl mb-2">🎉</div>
+              <div className="text-2xl font-bold text-yellow-400 mb-1">BONUS!</div>
+              <div className="text-white">+3 Extra Words Added!</div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Turn Start */}
       {gamePhase === 'turn-start' && (
         <motion.div
@@ -348,26 +396,27 @@ export default function GameScreen() {
             </div>
           </motion.div>
 
-          {/* Words Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3">
-            <AnimatePresence>
-              {currentWords.map((wordObj, index) => {
-                const isGuessed = guessedWords.includes(wordObj)
-                
-                return (
-                  <motion.div
-                    key={`${wordObj.word}-${index}`}
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0, opacity: 0 }}
-                    className={`glass-strong rounded-xl p-3 md:p-4 border-2 ${getDifficultyColor(wordObj.difficulty)} ${
-                      isGuessed ? 'opacity-30 line-through' : ''
-                    }`}
-                  >
-                    <div className="text-center">
-                      <div className="font-bold text-base md:text-xl mb-2 md:mb-3">{wordObj.word}</div>
-                      <div className="mt-2 text-xs md:text-sm font-semibold">
-                        <Zap className="w-3 h-3 inline mr-1" />
+          {/* Words Grid - Only visible to describer */}
+          {isMyTurn && (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3">
+              <AnimatePresence>
+                {currentWords.map((wordObj, index) => {
+                  const isGuessed = guessedWords.includes(wordObj)
+                  
+                  return (
+                    <motion.div
+                      key={`${wordObj.word}-${index}`}
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0, opacity: 0 }}
+                      className={`glass-strong rounded-xl p-3 md:p-4 border-2 ${getDifficultyColor(wordObj.difficulty)} ${
+                        isGuessed ? 'opacity-30 line-through' : ''
+                      }`}
+                    >
+                      <div className="text-center">
+                        <div className="font-bold text-base md:text-xl mb-2 md:mb-3">{wordObj.word}</div>
+                        <div className="mt-2 text-xs md:text-sm font-semibold">
+                          <Zap className="w-3 h-3 inline mr-1" />
                         {wordObj.points}pts
                       </div>
                     </div>
@@ -375,7 +424,8 @@ export default function GameScreen() {
                 )
               })}
             </AnimatePresence>
-          </div>
+            </div>
+          )}
 
           {/* Guess Input */}
           {!isMyTurn && (

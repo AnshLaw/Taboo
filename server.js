@@ -162,7 +162,14 @@ io.on("connection", (socket) => {
 
 	// End turn
 	socket.on("end-turn", (data) => {
-		const { roomCode, guessedCount, skippedCount, totalPoints } = data;
+		const {
+			roomCode,
+			guessedCount,
+			skippedCount,
+			totalPoints,
+			guessedWords,
+			guessedByPlayer,
+		} = data;
 		const room = gameRooms.get(roomCode);
 
 		if (room && room.gameState) {
@@ -170,6 +177,8 @@ io.on("connection", (socket) => {
 				guessedCount,
 				skippedCount,
 				totalPoints,
+				guessedWords,
+				guessedByPlayer,
 				gameState: room.gameState,
 			});
 		}
@@ -236,6 +245,13 @@ io.on("connection", (socket) => {
 	socket.on("timer-update", (data) => {
 		const { roomCode, timeRemaining } = data;
 		socket.to(roomCode).emit("timer-sync", { timeRemaining });
+	});
+
+	// Bonus words added
+	socket.on("bonus-words-added", (data) => {
+		const { roomCode, words } = data;
+		// Broadcast bonus words to all players
+		socket.to(roomCode).emit("bonus-words-sync", { words });
 	});
 
 	// Chat message
