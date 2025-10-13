@@ -225,6 +225,14 @@ export default function GameScreen() {
     socket?.emit('next-turn', { roomCode })
   }
 
+  const handleSkipDescribing = () => {
+    // Describer can skip their turn before starting
+    if (isMyTurn && gamePhase === 'turn-start') {
+      socket?.emit('skip-turn', { roomCode, playerName })
+      alert('You have skipped your turn!')
+    }
+  }
+
   const handleSkipTurn = () => {
     if (!isMyTurn) {
       // Emit skip-guesser-turn event to server
@@ -250,7 +258,7 @@ export default function GameScreen() {
   return (
     <div className="space-y-4 md:space-y-6 relative">
       {/* Leave Game Button */}
-      <div className="absolute top-0 right-0 z-10">
+      <div className="absolute top-0 left-0 z-10">
         <button
           onClick={() => setShowLeaveConfirm(true)}
           className="px-3 md:px-4 py-2 glass-strong rounded-xl hover:bg-red-500/20 transition-colors flex items-center gap-2 text-red-400 text-sm md:text-base"
@@ -393,12 +401,20 @@ export default function GameScreen() {
             Round {gameState.round} of {gameState.maxRounds}
           </div>
           {isMyTurn && (
-            <button
-              onClick={startTurn}
-              className="px-8 md:px-12 py-3 md:py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-xl font-bold text-lg md:text-xl transition-all transform hover:scale-105"
-            >
-              Start Turn
-            </button>
+            <div className="flex flex-col md:flex-row gap-3 md:gap-4 justify-center items-center">
+              <button
+                onClick={startTurn}
+                className="px-8 md:px-12 py-3 md:py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-xl font-bold text-lg md:text-xl transition-all transform hover:scale-105"
+              >
+                Start Turn
+              </button>
+              <button
+                onClick={handleSkipDescribing}
+                className="px-6 md:px-8 py-3 md:py-4 bg-orange-500 hover:bg-orange-600 rounded-xl font-semibold text-base md:text-lg transition-all transform hover:scale-105"
+              >
+                ⏭️ Skip Turn
+              </button>
+            </div>
           )}
           {!isMyTurn && (
             <div className="text-gray-400 text-sm md:text-base">Waiting for {currentDescriber} to start...</div>
@@ -478,12 +494,6 @@ export default function GameScreen() {
                   Submit
                 </button>
               </div>
-              <button
-                onClick={handleSkipTurn}
-                className="w-full py-2 px-4 bg-orange-500 hover:bg-orange-600 rounded-xl font-semibold text-sm md:text-base transition-all"
-              >
-                ⏭️ Skip My Turn
-              </button>
             </motion.div>
           )}
 

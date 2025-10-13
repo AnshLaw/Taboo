@@ -9,6 +9,13 @@ export const metadata: Metadata = {
   description: 'Play Taboo with friends online!',
 }
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 0.9,
+  maximumScale: 1.0,
+  userScalable: true,
+}
+
 export default function RootLayout({
   children,
 }: {
