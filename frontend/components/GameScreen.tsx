@@ -323,12 +323,7 @@ export default function GameScreen() {
                     }`}
                   >
                     <div className="text-center">
-                      <div className="font-bold text-lg mb-2">{wordObj.word}</div>
-                      <div className="text-xs space-y-1 text-gray-400">
-                        {wordObj.taboo.map((t: string) => (
-                          <div key={t} className="text-red-400">🚫 {t}</div>
-                        ))}
-                      </div>
+                      <div className="font-bold text-xl mb-3">{wordObj.word}</div>
                       <div className="mt-2 text-sm font-semibold">
                         <Zap className="w-3 h-3 inline mr-1" />
                         {wordObj.points}pts
