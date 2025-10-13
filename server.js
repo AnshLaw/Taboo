@@ -244,8 +244,8 @@ io.on("connection", (socket) => {
 				// If host left, close the entire room
 				if (wasHost) {
 					// Notify all players that host left and room is closing
-					io.to(roomCode).emit("host-left", { 
-						message: "Host has left. Room is closing." 
+					io.to(roomCode).emit("host-left", {
+						message: "Host has left. Room is closing.",
 					});
 					// Delete the room
 					gameRooms.delete(roomCode);
