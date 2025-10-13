@@ -21,19 +21,32 @@ export default function GameScreen() {
   const currentTeam = gameState.teams[gameState.currentTeamIndex]
   const currentDescriber = currentTeam.players[gameState.currentDescriberIndex[gameState.currentTeamIndex]]
   const isMyTurn = currentDescriber === playerName
+  
+  // Check if player is on the current team and not the describer
+  const isOnCurrentTeam = playerName ? currentTeam.players.includes(playerName) : false
+  const isGuesser = isOnCurrentTeam && !isMyTurn
 
   // Listen for sync events
   useEffect(() => {
     if (!socket) return
 
     const handleWordGuessed = (data: any) => {
-      // Track who guessed the word
-      if (data.word && data.guesser && data.points) {
+      // Track who guessed the word and update guessedWords for all players
+      if (data.word && data.guesser && data.points && data.wordObj) {
         setGuessedByPlayer(prev => [...prev, {
           word: data.word,
           guesser: data.guesser,
           points: data.points
         }])
+        
+        // Update guessedWords for all players with the full wordObj
+        setGuessedWords(prev => {
+          // Avoid duplicates
+          if (prev.some(w => w.word === data.word)) {
+            return prev
+          }
+          return [...prev, data.wordObj]
+        })
       }
     }
 
@@ -42,6 +55,8 @@ export default function GameScreen() {
       setGamePhase('playing')
       setTurnActive(true)
       setTimeRemaining(60)
+      setGuessedWords([])
+      setGuessedByPlayer([])
       // Set the words for all players (including guessers)
       if (data.words) {
         setCurrentWords(data.words)
@@ -142,6 +157,9 @@ export default function GameScreen() {
   }
 
   const submitGuess = () => {
+    // Only allow guesses from team members who are guessing
+    if (!isGuesser) return
+    
     const input = guess.trim().toUpperCase()
     if (input.length === 0) return
 
@@ -153,10 +171,11 @@ export default function GameScreen() {
         setGuessedWords(newGuessed)
         setGuess('')
         
-        // Emit to server
+        // Emit to server with full wordObj
         socket?.emit('word-guessed', { 
           roomCode, 
           word: wordObj.word, 
+          wordObj: wordObj,
           guesser: playerName,
           points: wordObj.points 
         })
@@ -319,13 +338,21 @@ export default function GameScreen() {
           initial={{ y: -10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           className={`glass-strong rounded-xl p-3 md:p-4 text-center border-2 ${
-            isMyTurn ? 'border-purple-500/50 bg-purple-500/10' : 'border-green-500/50 bg-green-500/10'
+            isMyTurn 
+              ? 'border-purple-500/50 bg-purple-500/10' 
+              : isGuesser 
+              ? 'border-green-500/50 bg-green-500/10' 
+              : 'border-gray-500/50 bg-gray-500/10'
           }`}
         >
           <div className="flex items-center justify-center gap-2">
             <Users className="w-5 h-5" />
             <span className="font-bold text-lg md:text-xl">
-              {isMyTurn ? '🎤 You are DESCRIBING' : '🤔 You are GUESSING'}
+              {isMyTurn 
+                ? '🎤 You are DESCRIBING' 
+                : isGuesser 
+                ? '🤔 You are GUESSING' 
+                : '👀 You are WATCHING'}
             </span>
           </div>
         </motion.div>
@@ -427,8 +454,8 @@ export default function GameScreen() {
             </div>
           )}
 
-          {/* Guess Input */}
-          {!isMyTurn && (
+          {/* Guess Input - Only for team members who are guessing */}
+          {isGuesser && (
             <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -457,6 +484,22 @@ export default function GameScreen() {
               >
                 ⏭️ Skip My Turn
               </button>
+            </motion.div>
+          )}
+
+          {/* Message for opposite team players */}
+          {!isOnCurrentTeam && (
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              className="glass-strong rounded-xl p-6 text-center"
+            >
+              <div className="text-xl font-semibold text-gray-400">
+                👀 Watch {currentTeam.name} play their turn!
+              </div>
+              <div className="text-sm text-gray-500 mt-2">
+                You'll play when it's your team's turn
+              </div>
             </motion.div>
           )}
 

@@ -136,7 +136,7 @@ io.on("connection", (socket) => {
 
 	// Word guessed
 	socket.on("word-guessed", (data) => {
-		const { roomCode, word, guesser, points } = data;
+		const { roomCode, word, wordObj, guesser, points } = data;
 		const room = gameRooms.get(roomCode);
 
 		if (room && room.gameState) {
@@ -153,6 +153,7 @@ io.on("connection", (socket) => {
 
 			io.to(roomCode).emit("word-guessed-sync", {
 				word,
+				wordObj,
 				guesser,
 				points,
 				gameState: room.gameState,
