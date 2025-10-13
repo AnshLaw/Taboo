@@ -31,6 +31,17 @@ export default function GameScreen() {
       }
     }
 
+    const handleTurnStarted = (data: any) => {
+      // When describer starts turn, all players switch to playing phase
+      setGamePhase('playing')
+      setTurnActive(true)
+      setTimeRemaining(60)
+      // Set the words for all players (including guessers)
+      if (data.words) {
+        setCurrentWords(data.words)
+      }
+    }
+
     const handleTurnEnded = (data: any) => {
       setTurnActive(false)
       setGamePhase('turn-end')
@@ -52,6 +63,7 @@ export default function GameScreen() {
     }
 
     socket.on('word-guessed-sync', handleWordGuessed)
+    socket.on('turn-started', handleTurnStarted)
     socket.on('turn-ended', handleTurnEnded)
     socket.on('next-turn-sync', handleNextTurn)
     socket.on('timer-sync', handleTimerSync)
@@ -59,6 +71,7 @@ export default function GameScreen() {
 
     return () => {
       socket.off('word-guessed-sync', handleWordGuessed)
+      socket.off('turn-started', handleTurnStarted)
       socket.off('turn-ended', handleTurnEnded)
       socket.off('next-turn-sync', handleNextTurn)
       socket.off('timer-sync', handleTimerSync)
@@ -95,7 +108,8 @@ export default function GameScreen() {
     setTurnActive(true)
     setGamePhase('playing')
     
-    socket?.emit('start-turn', { roomCode })
+    // Send words to server so all players get them
+    socket?.emit('start-turn', { roomCode, words })
   }
 
   const handleGuess = (e: React.ChangeEvent<HTMLInputElement>) => {

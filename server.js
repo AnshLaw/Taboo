@@ -122,11 +122,15 @@ io.on("connection", (socket) => {
 
 	// Start turn
 	socket.on("start-turn", (data) => {
-		const { roomCode } = data;
+		const { roomCode, words } = data;
 		const room = gameRooms.get(roomCode);
 
 		if (room && room.gameState) {
-			io.to(roomCode).emit("turn-started", { gameState: room.gameState });
+			// Broadcast turn started with words to all players
+			io.to(roomCode).emit("turn-started", {
+				gameState: room.gameState,
+				words: words,
+			});
 		}
 	});
 
