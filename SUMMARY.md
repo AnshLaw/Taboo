@@ -283,3 +283,20 @@ npm run dev
 Then open: **http://localhost:3001**
 
 **Enjoy your new game!** 🎉
+
+ - - - 
+ 
+ # #     L A T E S T   U P D A T E S   -   M u l t i p l a y e r   F i x e s ! 
+ 
+ # # #     A l l   I s s u e s   F i x e d ! 
+ 
+ P r e v i o u s   i s s u e s : 
+ -     S c o r e s   n o t   s y n c i n g 
+ -     N o   n a v i g a t i o n / b a c k   b u t t o n s 
+ -     T i m e r   d e s y n c 
+ -     G a m e   g e t t i n g   s t u c k 
+ 
+ A l l   n o w   F I X E D !   
+ 
+ S e e :   F I X E S - A N D - I M P R O V E M E N T S . m d   f o r   d e t a i l s !  
+ 
