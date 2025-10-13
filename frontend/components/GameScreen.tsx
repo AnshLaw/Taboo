@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useGame } from './GameContext'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Clock, Trophy, Zap, SkipForward } from 'lucide-react'
+import { Clock, Trophy, Zap, SkipForward, Home, LogOut } from 'lucide-react'
 import { wordDatabase } from '@/lib/wordDatabase'
 
 export default function GameScreen() {
-  const { gameState, socket, roomCode, playerName } = useGame()
+  const { gameState, socket, roomCode, playerName, leaveGame } = useGame()
   const [gamePhase, setGamePhase] = useState<'turn-start' | 'playing' | 'turn-end'>('turn-start')
   const [currentWords, setCurrentWords] = useState<any[]>([])
   const [guessedWords, setGuessedWords] = useState<any[]>([])
@@ -15,22 +15,73 @@ export default function GameScreen() {
   const [guess, setGuess] = useState('')
   const [timeRemaining, setTimeRemaining] = useState(60)
   const [turnActive, setTurnActive] = useState(false)
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
 
   const currentTeam = gameState.teams[gameState.currentTeamIndex]
   const currentDescriber = currentTeam.players[gameState.currentDescriberIndex[gameState.currentTeamIndex]]
   const isMyTurn = currentDescriber === playerName
 
+  // Listen for sync events
+  useEffect(() => {
+    if (!socket) return
+
+    const handleWordGuessed = (data: any) => {
+      // Update local state with server data
+      if (data.gameState) {
+        // Refresh game state from server
+      }
+    }
+
+    const handleWordSkipped = (data: any) => {
+      // Update local state with server data
+    }
+
+    const handleTurnEnded = (data: any) => {
+      setTurnActive(false)
+      setGamePhase('turn-end')
+    }
+
+    const handleNextTurn = (data: any) => {
+      setGamePhase('turn-start')
+      setGuessedWords([])
+      setSkippedWords([])
+      setTimeRemaining(60)
+    }
+
+    const handleTimerSync = (data: any) => {
+      setTimeRemaining(data.timeRemaining)
+    }
+
+    socket.on('word-guessed-sync', handleWordGuessed)
+    socket.on('word-skipped-sync', handleWordSkipped)
+    socket.on('turn-ended', handleTurnEnded)
+    socket.on('next-turn-sync', handleNextTurn)
+    socket.on('timer-sync', handleTimerSync)
+
+    return () => {
+      socket.off('word-guessed-sync', handleWordGuessed)
+      socket.off('word-skipped-sync', handleWordSkipped)
+      socket.off('turn-ended', handleTurnEnded)
+      socket.off('next-turn-sync', handleNextTurn)
+      socket.off('timer-sync', handleTimerSync)
+    }
+  }, [socket])
+
+  // Timer
   useEffect(() => {
     let timer: NodeJS.Timeout
-    if (turnActive && timeRemaining > 0) {
+    if (turnActive && timeRemaining > 0 && isMyTurn) {
       timer = setTimeout(() => {
-        setTimeRemaining(t => t - 1)
+        const newTime = timeRemaining - 1
+        setTimeRemaining(newTime)
+        // Broadcast timer to all players
+        socket?.emit('timer-update', { roomCode, timeRemaining: newTime })
       }, 1000)
     } else if (timeRemaining === 0 && turnActive) {
       handleEndTurn()
     }
     return () => clearTimeout(timer)
-  }, [turnActive, timeRemaining])
+  }, [turnActive, timeRemaining, isMyTurn])
 
   const selectWords = (count: number) => {
     const shuffled = [...wordDatabase].sort(() => Math.random() - 0.5)
@@ -38,12 +89,15 @@ export default function GameScreen() {
   }
 
   const startTurn = () => {
-    setCurrentWords(selectWords(10))
+    const words = selectWords(10)
+    setCurrentWords(words)
     setGuessedWords([])
     setSkippedWords([])
     setTimeRemaining(60)
     setTurnActive(true)
     setGamePhase('playing')
+    
+    socket?.emit('start-turn', { roomCode })
   }
 
   const handleGuess = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,12 +110,20 @@ export default function GameScreen() {
       if (guessedWords.includes(wordObj) || skippedWords.includes(wordObj)) continue
 
       if (input === wordObj.word) {
-        setGuessedWords([...guessedWords, wordObj])
+        const newGuessed = [...guessedWords, wordObj]
+        setGuessedWords(newGuessed)
         setGuess('')
-        socket?.emit('word-guessed', { roomCode, word: wordObj.word, guesser: playerName })
         
-        // Add more words if needed
-        const remaining = currentWords.length - guessedWords.length - skippedWords.length - 1
+        // Emit to server
+        socket?.emit('word-guessed', { 
+          roomCode, 
+          word: wordObj.word, 
+          guesser: playerName,
+          points: wordObj.points 
+        })
+        
+        // Add more words if running low
+        const remaining = currentWords.length - newGuessed.length - skippedWords.length
         if (remaining <= 2) {
           setCurrentWords([...currentWords, ...selectWords(5)])
         }
@@ -83,11 +145,17 @@ export default function GameScreen() {
   const handleEndTurn = () => {
     setTurnActive(false)
     setGamePhase('turn-end')
+    
+    const totalPoints = guessedWords.reduce((sum, w) => sum + w.points, 0) - skippedWords.length
+    socket?.emit('end-turn', { 
+      roomCode, 
+      guessedCount: guessedWords.length,
+      skippedCount: skippedWords.length,
+      totalPoints
+    })
   }
 
   const handleNextTurn = () => {
-    setGamePhase('turn-start')
-    // Emit next turn to server
     socket?.emit('next-turn', { roomCode })
   }
 
@@ -100,8 +168,64 @@ export default function GameScreen() {
     }
   }
 
+  const handleLeaveGame = () => {
+    setShowLeaveConfirm(false)
+    leaveGame()
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Leave Game Button */}
+      <div className="absolute top-0 right-0 z-10">
+        <button
+          onClick={() => setShowLeaveConfirm(true)}
+          className="px-4 py-2 glass-strong rounded-xl hover:bg-red-500/20 transition-colors flex items-center gap-2 text-red-400"
+        >
+          <LogOut className="w-4 h-4" />
+          Leave Game
+        </button>
+      </div>
+
+      {/* Leave Confirmation Modal */}
+      <AnimatePresence>
+        {showLeaveConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowLeaveConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="glass-strong rounded-2xl p-8 max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-2xl font-bold mb-4">Leave Game?</h3>
+              <p className="text-gray-400 mb-6">
+                Are you sure you want to leave the game? You'll return to the lobby.
+              </p>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setShowLeaveConfirm(false)}
+                  className="flex-1 px-6 py-3 glass rounded-xl hover:bg-white/10 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleLeaveGame}
+                  className="flex-1 px-6 py-3 bg-red-500 hover:bg-red-600 rounded-xl transition-colors font-semibold"
+                >
+                  Leave
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header - Scores */}
       <div className="grid grid-cols-2 gap-4">
         <motion.div
@@ -303,6 +427,9 @@ export default function GameScreen() {
             >
               Next Turn
             </button>
+          )}
+          {!isMyTurn && (
+            <div className="text-gray-400">Waiting for {currentDescriber}...</div>
           )}
         </motion.div>
       )}

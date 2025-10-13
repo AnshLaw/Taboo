@@ -52,6 +52,7 @@ interface GameContextType {
   joinRoom: (code: string, name: string) => void
   joinTeam: (teamIndex: number) => void
   startGame: () => void
+  leaveGame: () => void
   setCurrentScreen: (screen: 'room' | 'lobby' | 'game' | 'gameover') => void
 }
 
@@ -131,6 +132,31 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setGameState(data.gameState)
     })
 
+    newSocket.on('word-guessed-sync', (data) => {
+      setGameState(data.gameState)
+    })
+
+    newSocket.on('word-skipped-sync', (data) => {
+      setGameState(data.gameState)
+    })
+
+    newSocket.on('turn-ended', (data) => {
+      setGameState(data.gameState)
+    })
+
+    newSocket.on('next-turn-sync', (data) => {
+      setGameState(data.gameState)
+    })
+
+    newSocket.on('game-over', (data) => {
+      setGameState(data.gameState)
+      setCurrentScreen('gameover')
+    })
+
+    newSocket.on('game-left', (data) => {
+      setCurrentScreen('lobby')
+    })
+
     newSocket.on('error', (data) => {
       alert(data.message)
     })
@@ -167,6 +193,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     socket?.emit('start-game', { roomCode, gameState: newGameState })
   }
 
+  const leaveGame = () => {
+    socket?.emit('leave-game', { roomCode })
+    setCurrentScreen('lobby')
+  }
+
   return (
     <GameContext.Provider
       value={{
@@ -184,6 +215,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         joinRoom,
         joinTeam,
         startGame,
+        leaveGame,
         setCurrentScreen
       }}
     >

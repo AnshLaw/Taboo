@@ -2,10 +2,10 @@
 
 import { useGame } from './GameContext'
 import { motion } from 'framer-motion'
-import { Copy, Crown, Play } from 'lucide-react'
+import { Copy, Crown, Play, ArrowLeft } from 'lucide-react'
 
 export default function LobbyScreen() {
-  const { roomCode, players, isHost, myTeam, joinTeam, startGame, playerName } = useGame()
+  const { roomCode, players, isHost, myTeam, joinTeam, startGame, playerName, setCurrentScreen } = useGame()
 
   const team1 = players.filter(p => p.team === 0)
   const team2 = players.filter(p => p.team === 1)
@@ -20,7 +20,16 @@ export default function LobbyScreen() {
   }
 
   return (
-    <div className="py-8">
+    <div className="py-8 relative">
+      {/* Back Button */}
+      <button
+        onClick={() => setCurrentScreen('room')}
+        className="absolute top-0 left-0 px-4 py-2 glass-strong rounded-xl hover:bg-white/10 transition-colors flex items-center gap-2"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back
+      </button>
+
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}

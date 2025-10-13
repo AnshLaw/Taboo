@@ -116,26 +116,118 @@ io.on("connection", (socket) => {
 
 		if (room) {
 			room.gameState = gameState;
-			socket.to(roomCode).emit("game-state-updated", { gameState });
+			io.to(roomCode).emit("game-state-updated", { gameState });
+		}
+	});
+
+	// Start turn
+	socket.on("start-turn", (data) => {
+		const { roomCode } = data;
+		const room = gameRooms.get(roomCode);
+		
+		if (room && room.gameState) {
+			io.to(roomCode).emit("turn-started", { gameState: room.gameState });
 		}
 	});
 
 	// Word guessed
 	socket.on("word-guessed", (data) => {
-		const { roomCode, wordIndex, guesser } = data;
-		io.to(roomCode).emit("word-guessed-sync", { wordIndex, guesser });
+		const { roomCode, word, guesser, points } = data;
+		const room = gameRooms.get(roomCode);
+		
+		if (room && room.gameState) {
+			// Update team score
+			const teamIndex = room.gameState.currentTeamIndex;
+			room.gameState.teams[teamIndex].score += points;
+			
+			// Track player contribution
+			if (!room.gameState.playerContributions[guesser]) {
+				room.gameState.playerContributions[guesser] = { points: 0, words: [] };
+			}
+			room.gameState.playerContributions[guesser].points += points;
+			room.gameState.playerContributions[guesser].words.push(word);
+			
+			io.to(roomCode).emit("word-guessed-sync", { 
+				word, 
+				guesser, 
+				points,
+				gameState: room.gameState 
+			});
+		}
 	});
 
 	// Word skipped
 	socket.on("word-skipped", (data) => {
-		const { roomCode, wordIndex } = data;
-		io.to(roomCode).emit("word-skipped-sync", { wordIndex });
+		const { roomCode, word } = data;
+		const room = gameRooms.get(roomCode);
+		
+		if (room && room.gameState) {
+			// Deduct 1 point for skipping
+			const teamIndex = room.gameState.currentTeamIndex;
+			room.gameState.teams[teamIndex].score = Math.max(0, room.gameState.teams[teamIndex].score - 1);
+			
+			io.to(roomCode).emit("word-skipped-sync", { 
+				word,
+				gameState: room.gameState 
+			});
+		}
 	});
 
-	// Turn ended
-	socket.on("turn-ended", (data) => {
+	// End turn
+	socket.on("end-turn", (data) => {
+		const { roomCode, guessedCount, skippedCount, totalPoints } = data;
+		const room = gameRooms.get(roomCode);
+		
+		if (room && room.gameState) {
+			io.to(roomCode).emit("turn-ended", { 
+				guessedCount, 
+				skippedCount, 
+				totalPoints,
+				gameState: room.gameState 
+			});
+		}
+	});
+
+	// Next turn
+	socket.on("next-turn", (data) => {
 		const { roomCode } = data;
-		io.to(roomCode).emit("turn-ended-sync", data);
+		const room = gameRooms.get(roomCode);
+		
+		if (room && room.gameState) {
+			const gs = room.gameState;
+			
+			// Move to next team
+			gs.currentTeamIndex = (gs.currentTeamIndex + 1) % gs.teams.length;
+			
+			// If back to team 0, increment round
+			if (gs.currentTeamIndex === 0) {
+				gs.round++;
+			}
+			
+			// Move to next describer in the team
+			const currentTeam = gs.currentTeamIndex;
+			gs.currentDescriberIndex[currentTeam] = 
+				(gs.currentDescriberIndex[currentTeam] + 1) % gs.teams[currentTeam].players.length;
+			
+			// Check if game is over
+			if (gs.round > gs.maxRounds) {
+				io.to(roomCode).emit("game-over", { gameState: gs });
+			} else {
+				io.to(roomCode).emit("next-turn-sync", { gameState: gs });
+			}
+		}
+	});
+
+	// Leave game / return to lobby
+	socket.on("leave-game", (data) => {
+		const { roomCode } = data;
+		const room = gameRooms.get(roomCode);
+		
+		if (room) {
+			room.started = false;
+			room.gameState = null;
+			io.to(roomCode).emit("game-left", { room });
+		}
 	});
 
 	// Timer sync
