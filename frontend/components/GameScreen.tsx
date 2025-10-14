@@ -69,13 +69,15 @@ export default function GameScreen() {
     const handleTurnEnded = (data: any) => {
       setTurnActive(false)
       setGamePhase('turn-end')
-      // Store current words as previous round words for display
-      setPreviousRoundWords(currentWords)
+      // Store all words from this turn for display to everyone
+      if (data.allWords) {
+        setPreviousRoundWords(data.allWords)
+      }
       // Sync guessed words from the describer to all players
-      if (data.guessedWords && !isMyTurn) {
+      if (data.guessedWords) {
         setGuessedWords(data.guessedWords)
       }
-      if (data.guessedByPlayer && !isMyTurn) {
+      if (data.guessedByPlayer) {
         setGuessedByPlayer(data.guessedByPlayer)
       }
     }
@@ -92,13 +94,17 @@ export default function GameScreen() {
       // Update game state when describer is skipped
       if (data.gameState) {
         // The gameState will be updated through GameContext
-        alert(`${data.playerName} skipped their turn. Next describer is ready!`)
+        const newDescriber = data.gameState.teams[data.gameState.currentTeamIndex].players[
+          data.gameState.currentDescriberIndex[data.gameState.currentTeamIndex]
+        ]
+        alert(`${data.message}\nNext describer: ${newDescriber}`)
       }
       // Reset to turn-start phase for the new describer
       setGamePhase('turn-start')
       setGuessedWords([])
       setGuessedByPlayer([])
       setTimeRemaining(60)
+      setTurnActive(false)
     }
 
     const handleTimerSync = (data: any) => {
@@ -181,12 +187,12 @@ export default function GameScreen() {
     
     // If we need to ensure hard words (for initial round setup)
     if (ensureHardWords) {
-      // Get hard words
+      // Get hard words - only 2 per turn
       const hardWordIndices = availableIndices.filter(index => 
         wordDatabase[index].difficulty === 'hard'
       )
       const shuffledHardIndices = shuffleArray(hardWordIndices)
-      const selectedHardIndices = shuffledHardIndices.slice(0, Math.min(3, hardWordIndices.length))
+      const selectedHardIndices = shuffledHardIndices.slice(0, Math.min(2, hardWordIndices.length))
       
       // Get remaining words
       const remainingIndices = availableIndices.filter(index => 
@@ -310,11 +316,12 @@ export default function GameScreen() {
       skippedCount: 0,
       totalPoints,
       guessedWords: guessedWords,
-      guessedByPlayer: guessedByPlayer
+      guessedByPlayer: guessedByPlayer,
+      allWords: currentWords // Send all words from this turn for display
     })
   }
 
-  const handleNextTurn = () => {
+  const handleNextTurnButton = () => {
     socket?.emit('next-turn', { roomCode })
   }
 
@@ -322,7 +329,7 @@ export default function GameScreen() {
     // Describer can skip their turn before starting
     if (isMyTurn && gamePhase === 'turn-start') {
       socket?.emit('skip-turn', { roomCode, playerName })
-      alert('You have skipped your turn!')
+      // Alert will be shown when server responds with describer-skipped event
     }
   }
 
@@ -746,7 +753,7 @@ export default function GameScreen() {
 
           {isMyTurn && (
             <button
-              onClick={handleNextTurn}
+              onClick={handleNextTurnButton}
               className="w-full sm:w-auto px-6 sm:px-8 md:px-12 py-3 md:py-4 glass-strong hover:bg-white/5 border border-white/10 rounded-lg sm:rounded-xl font-bold text-base sm:text-lg md:text-xl transition-colors"
             >
               Next Turn

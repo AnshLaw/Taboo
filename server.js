@@ -261,7 +261,30 @@ io.on("connection", (socket) => {
 			totalPoints,
 			guessedWords,
 			guessedByPlayer,
+			allWords,
 		} = data;
+		const room = gameRooms.get(roomCode);
+
+		if (room && room.gameState) {
+			const gs = room.gameState;
+
+			// Just broadcast the turn ended event
+			// Don't rotate describer here - it will be done when next-turn is called
+			io.to(roomCode).emit("turn-ended", {
+				guessedCount,
+				skippedCount,
+				totalPoints,
+				guessedWords,
+				guessedByPlayer,
+				allWords, // Send all words to everyone for display
+				gameState: gs,
+			});
+		}
+	});
+
+	// Skip turn - describer wants to skip, pass to next teammate
+	socket.on("skip-turn", (data) => {
+		const { roomCode, playerName } = data;
 		const room = gameRooms.get(roomCode);
 
 		if (room && room.gameState) {
@@ -276,19 +299,18 @@ io.on("connection", (socket) => {
 			}
 			gs.turnCount[gs.currentTeamIndex]++;
 
-			// Rotate describer within the team after each turn
-			const teamSize = gs.teams[gs.currentTeamIndex].players.length;
+			// Move to next describer in the SAME team (don't skip team's turn)
+			const currentTeam = gs.currentTeamIndex;
+			const teamSize = gs.teams[currentTeam].players.length;
 			if (teamSize > 0) {
-				gs.currentDescriberIndex[gs.currentTeamIndex] =
+				gs.currentDescriberIndex[currentTeam] =
 					gs.turnCount[gs.currentTeamIndex] % teamSize;
 			}
 
-			io.to(roomCode).emit("turn-ended", {
-				guessedCount,
-				skippedCount,
-				totalPoints,
-				guessedWords,
-				guessedByPlayer,
+			// Notify all players
+			io.to(roomCode).emit("describer-skipped", {
+				playerName: playerName,
+				message: `${playerName} skipped describing. Next teammate is now the describer.`,
 				gameState: gs,
 			});
 		}
@@ -325,11 +347,21 @@ io.on("connection", (socket) => {
 		if (room && room.gameState) {
 			const gs = room.gameState;
 
+			// Initialize turnCount if needed
+			if (!gs.turnCount) {
+				gs.turnCount = {};
+			}
+
+			// Mark that the CURRENT team has completed a turn (before switching)
+			if (gs.turnCount[gs.currentTeamIndex] === undefined) {
+				gs.turnCount[gs.currentTeamIndex] = 0;
+			}
+			gs.turnCount[gs.currentTeamIndex]++;
+
 			// Move to next team
-			const previousTeam = gs.currentTeamIndex;
 			gs.currentTeamIndex = (gs.currentTeamIndex + 1) % gs.teams.length;
 
-			// If back to team 0, increment round (completed full cycle)
+			// If we've cycled back to team 0 after all teams played, increment round
 			if (gs.currentTeamIndex === 0) {
 				gs.round++;
 			}
@@ -340,15 +372,25 @@ io.on("connection", (socket) => {
 				return;
 			}
 
-			// Ensure describer index exists for all teams
-			if (gs.currentDescriberIndex[gs.currentTeamIndex] === undefined) {
-				gs.currentDescriberIndex[gs.currentTeamIndex] = 0;
+			// Set describer for the NEW current team based on their turn count
+			if (gs.turnCount[gs.currentTeamIndex] === undefined) {
+				gs.turnCount[gs.currentTeamIndex] = 0;
 			}
 
-			// Validate and fix describer indices
+			const teamSize = gs.teams[gs.currentTeamIndex].players.length;
+			if (teamSize > 0) {
+				// Describer rotates based on how many turns this team has completed
+				gs.currentDescriberIndex[gs.currentTeamIndex] =
+					gs.turnCount[gs.currentTeamIndex] % teamSize;
+			}
+
+			// Ensure describer index exists for all teams
 			gs.teams.forEach((team, idx) => {
+				if (gs.currentDescriberIndex[idx] === undefined) {
+					gs.currentDescriberIndex[idx] = 0;
+				}
+				// Validate and fix describer indices
 				if (team.players.length > 0) {
-					// Ensure index is within bounds
 					if (gs.currentDescriberIndex[idx] >= team.players.length) {
 						gs.currentDescriberIndex[idx] = 0;
 					}
