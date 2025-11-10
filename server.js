@@ -171,6 +171,7 @@ io.on("connection", (socket) => {
 			// Reset game state completely for new game
 			room.gameState = {
 				...gameState,
+				gameStarted: true, // Add this flag for disconnect handler to check
 				turnCount: {}, // Reset turn counter
 				round: 1,
 				currentTeamIndex: 0,
@@ -182,6 +183,8 @@ io.on("connection", (socket) => {
 				guessedWords: [],
 				skippedWords: [],
 				currentWords: [],
+				currentTurnGuessedWords: [],
+				currentTurnWrongGuesses: [],
 				playerContributions: {},
 			};
 
@@ -485,10 +488,33 @@ io.on("connection", (socket) => {
 
 				// Remove from game state teams if game has started
 				if (room.gameState) {
-					room.gameState.teams.forEach((team) => {
+					room.gameState.teams.forEach((team, teamIndex) => {
 						const teamPlayerIndex = team.players.indexOf(playerName);
 						if (teamPlayerIndex !== -1) {
 							team.players.splice(teamPlayerIndex, 1);
+
+							// Adjust describer index if the kicked player was before or at the current describer
+							if (
+								room.gameState.currentDescriberIndex[teamIndex] !== undefined
+							) {
+								if (
+									teamPlayerIndex <=
+									room.gameState.currentDescriberIndex[teamIndex]
+								) {
+									room.gameState.currentDescriberIndex[teamIndex] = Math.max(
+										0,
+										room.gameState.currentDescriberIndex[teamIndex] - 1
+									);
+								}
+								// Ensure index is within bounds
+								if (
+									team.players.length > 0 &&
+									room.gameState.currentDescriberIndex[teamIndex] >=
+										team.players.length
+								) {
+									room.gameState.currentDescriberIndex[teamIndex] = 0;
+								}
+							}
 						}
 					});
 				}
@@ -609,25 +635,35 @@ io.on("connection", (socket) => {
 
 								team.players.splice(teamPlayerIndex, 1);
 
-								// Adjust describer index if needed
+								// Adjust describer index if a player before or at the describer position left
 								if (
-									room.gameState.currentDescriberIndex[teamIndex] >=
-									team.players.length
+									room.gameState.currentDescriberIndex[teamIndex] !== undefined
 								) {
-									room.gameState.currentDescriberIndex[teamIndex] = 0;
+									if (
+										teamPlayerIndex <=
+										room.gameState.currentDescriberIndex[teamIndex]
+									) {
+										room.gameState.currentDescriberIndex[teamIndex] = Math.max(
+											0,
+											room.gameState.currentDescriberIndex[teamIndex] - 1
+										);
+									}
+									// Ensure describer index is within bounds
+									if (
+										team.players.length > 0 &&
+										room.gameState.currentDescriberIndex[teamIndex] >=
+											team.players.length
+									) {
+										room.gameState.currentDescriberIndex[teamIndex] = 0;
+									}
 								}
 							}
 						});
 
-						// If describer left during active turn, skip to next describer on the same team
+						// If describer left during active turn, notify players
 						if (describerLeft && room.gameState.gameStarted) {
 							const team = room.gameState.teams[currentTeamIndex];
 							if (team.players.length > 0) {
-								// Move to next describer on the same team
-								room.gameState.currentDescriberIndex[currentTeamIndex] =
-									room.gameState.currentDescriberIndex[currentTeamIndex] %
-									team.players.length;
-
 								io.to(roomCode).emit("describer-left", {
 									message: "Describer disconnected. Moving to next teammate.",
 									gameState: room.gameState,

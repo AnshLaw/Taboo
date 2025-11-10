@@ -24,11 +24,12 @@ export default function GameScreen() {
   const [showHostMenu, setShowHostMenu] = useState<{ teamIndex: number; playerIndex: number } | null>(null)
 
   const currentTeam = gameState.teams[gameState.currentTeamIndex]
-  const currentDescriber = currentTeam.players[gameState.currentDescriberIndex[gameState.currentTeamIndex]]
+  const currentDescriberIndex = gameState.currentDescriberIndex?.[gameState.currentTeamIndex] ?? 0
+  const currentDescriber = currentTeam?.players?.[currentDescriberIndex]
   const isMyTurn = currentDescriber === playerName
   
   // Check if player is on the current team and not the describer
-  const isOnCurrentTeam = playerName ? currentTeam.players.includes(playerName) : false
+  const isOnCurrentTeam = playerName ? currentTeam?.players?.includes(playerName) : false
   const isGuesser = isOnCurrentTeam && !isMyTurn
 
   // Listen for sync events
@@ -192,12 +193,15 @@ export default function GameScreen() {
         setTimeRemaining(newTime)
         // Broadcast timer to all players
         socket?.emit('timer-update', { roomCode, timeRemaining: newTime })
+        
+        // Check if time is up after update
+        if (newTime === 0) {
+          handleEndTurn()
+        }
       }, 1000)
-    } else if (timeRemaining === 0 && turnActive) {
-      handleEndTurn()
     }
     return () => clearTimeout(timer)
-  }, [turnActive, timeRemaining, isMyTurn])
+  }, [turnActive, timeRemaining, isMyTurn, socket, roomCode])
 
   // Fisher-Yates shuffle algorithm for better randomization
   const shuffleArray = <T,>(array: T[]): T[] => {
@@ -211,14 +215,16 @@ export default function GameScreen() {
 
   const selectWords = (count: number, ensureHardWords: boolean = false) => {
     // Get indices of words we haven't used yet
-    const availableIndices = wordDatabase
+    let availableIndices = wordDatabase
       .map((_, index) => index)
       .filter(index => !usedWordIndices.has(index))
     
     // If we've used more than 80% of words, reset the used words set
     if (availableIndices.length < wordDatabase.length * 0.2) {
-      setUsedWordIndices(new Set())
-      return selectWords(count, ensureHardWords) // Recursively call with reset set
+      const newSet = new Set<number>()
+      setUsedWordIndices(newSet)
+      // Recalculate available indices with empty set
+      availableIndices = wordDatabase.map((_, index) => index)
     }
     
     let selectedWords: any[] = []
@@ -252,7 +258,7 @@ export default function GameScreen() {
     } else {
       // Regular selection without hard word requirement
       const shuffledIndices = shuffleArray(availableIndices)
-      const selectedIndices = shuffledIndices.slice(0, count)
+      const selectedIndices = shuffledIndices.slice(0, Math.min(count, shuffledIndices.length))
       selectedWords = selectedIndices.map(index => wordDatabase[index])
       
       // Mark as used
