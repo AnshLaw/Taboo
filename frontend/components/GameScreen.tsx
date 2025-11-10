@@ -11,6 +11,7 @@ export default function GameScreen() {
   const [currentWords, setCurrentWords] = useState<any[]>([])
   const [guessedWords, setGuessedWords] = useState<any[]>([])
   const [guessedByPlayer, setGuessedByPlayer] = useState<{word: string, guesser: string, points: number}[]>([])
+  const [wrongGuesses, setWrongGuesses] = useState<{word: string, guesser: string}[]>([])
   const [previousRoundWords, setPreviousRoundWords] = useState<any[]>([])
   const [guess, setGuess] = useState('')
   const [timeRemaining, setTimeRemaining] = useState(60)
@@ -61,6 +62,7 @@ export default function GameScreen() {
       setTimeRemaining(60)
       setGuessedWords([])
       setGuessedByPlayer([])
+      setWrongGuesses([])
       // Set the words for all players (including guessers)
       if (data.words) {
         setCurrentWords(data.words)
@@ -87,6 +89,7 @@ export default function GameScreen() {
       setGamePhase('turn-start')
       setGuessedWords([])
       setGuessedByPlayer([])
+      setWrongGuesses([])
       setPreviousRoundWords([]) // Clear previous round words when starting new turn
       setTimeRemaining(60)
     }
@@ -104,12 +107,30 @@ export default function GameScreen() {
       setGamePhase('turn-start')
       setGuessedWords([])
       setGuessedByPlayer([])
+      setWrongGuesses([])
       setTimeRemaining(60)
       setTurnActive(false)
     }
 
     const handleTimerSync = (data: any) => {
       setTimeRemaining(data.timeRemaining)
+    }
+
+    const handleWrongGuess = (data: any) => {
+      if (data.wrongGuesses) {
+        setWrongGuesses(data.wrongGuesses)
+      }
+    }
+
+    const handleDescriberLeft = (data: any) => {
+      alert(data.message)
+      // Reset to turn-start phase for new describer
+      setGamePhase('turn-start')
+      setGuessedWords([])
+      setGuessedByPlayer([])
+      setWrongGuesses([])
+      setTimeRemaining(60)
+      setTurnActive(false)
     }
 
     const handleHostLeft = () => {
@@ -134,6 +155,8 @@ export default function GameScreen() {
     socket.on('host-left', handleHostLeft)
     socket.on('bonus-words-sync', handleBonusWords)
     socket.on('describer-skipped', handleDescriberSkipped)
+    socket.on('wrong-guess-sync', handleWrongGuess)
+    socket.on('describer-left', handleDescriberLeft)
 
     return () => {
       socket.off('word-guessed-sync', handleWordGuessed)
@@ -144,6 +167,8 @@ export default function GameScreen() {
       socket.off('host-left', handleHostLeft)
       socket.off('bonus-words-sync', handleBonusWords)
       socket.off('describer-skipped', handleDescriberSkipped)
+      socket.off('wrong-guess-sync', handleWrongGuess)
+      socket.off('describer-left', handleDescriberLeft)
     }
   }, [socket])
 
@@ -271,10 +296,12 @@ export default function GameScreen() {
     const input = guess.trim().toUpperCase()
     if (input.length === 0) return
 
+    let foundMatch = false
     for (const wordObj of currentWords) {
       if (guessedWords.includes(wordObj)) continue
 
       if (input === wordObj.word) {
+        foundMatch = true
         const newGuessed = [...guessedWords, wordObj]
         setGuessedWords(newGuessed)
         setGuess('')
@@ -309,6 +336,16 @@ export default function GameScreen() {
         }
         break
       }
+    }
+
+    // If no match found, it's a wrong guess
+    if (!foundMatch && input.length > 0) {
+      setGuess('')
+      socket?.emit('wrong-guess', {
+        roomCode,
+        word: input,
+        guesser: playerName
+      })
     }
   }
 
@@ -693,6 +730,23 @@ export default function GameScreen() {
                   Submit
                 </button>
               </div>
+
+              {/* Wrong Guesses Display */}
+              {wrongGuesses.length > 0 && (
+                <div className="mt-3">
+                  <div className="text-xs sm:text-sm text-red-400 font-semibold mb-1.5">Wrong Guesses:</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {wrongGuesses.map((wrong, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-1 bg-red-500/20 border border-red-500/40 rounded text-xs text-red-300"
+                      >
+                        {wrong.word}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

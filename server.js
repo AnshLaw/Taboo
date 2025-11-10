@@ -217,6 +217,10 @@ io.on("connection", (socket) => {
 				gs.turnCount[gs.currentTeamIndex] = 0;
 			}
 
+			// Clear guessed words for new turn
+			gs.currentTurnGuessedWords = [];
+			gs.currentTurnWrongGuesses = [];
+
 			// Broadcast turn started with words to all players
 			io.to(roomCode).emit("turn-started", {
 				gameState: gs,
@@ -231,23 +235,64 @@ io.on("connection", (socket) => {
 		const room = gameRooms.get(roomCode);
 
 		if (room && room.gameState) {
+			const gs = room.gameState;
+
+			// Initialize guessed words tracking if not exists
+			if (!gs.currentTurnGuessedWords) {
+				gs.currentTurnGuessedWords = [];
+			}
+
+			// Check if word was already guessed this turn (prevent duplicates)
+			if (gs.currentTurnGuessedWords.includes(word)) {
+				console.log(`Word "${word}" already guessed, ignoring duplicate`);
+				return;
+			}
+
+			// Add to guessed words list
+			gs.currentTurnGuessedWords.push(word);
+
 			// Update team score
-			const teamIndex = room.gameState.currentTeamIndex;
-			room.gameState.teams[teamIndex].score += points;
+			const teamIndex = gs.currentTeamIndex;
+			gs.teams[teamIndex].score += points;
 
 			// Track player contribution
-			if (!room.gameState.playerContributions[guesser]) {
-				room.gameState.playerContributions[guesser] = { points: 0, words: [] };
+			if (!gs.playerContributions[guesser]) {
+				gs.playerContributions[guesser] = { points: 0, words: [] };
 			}
-			room.gameState.playerContributions[guesser].points += points;
-			room.gameState.playerContributions[guesser].words.push(word);
+			gs.playerContributions[guesser].points += points;
+			gs.playerContributions[guesser].words.push(word);
 
 			io.to(roomCode).emit("word-guessed-sync", {
 				word,
 				wordObj,
 				guesser,
 				points,
-				gameState: room.gameState,
+				gameState: gs,
+			});
+		}
+	});
+
+	// Wrong guess
+	socket.on("wrong-guess", (data) => {
+		const { roomCode, word, guesser } = data;
+		const room = gameRooms.get(roomCode);
+
+		if (room && room.gameState) {
+			const gs = room.gameState;
+
+			// Initialize wrong guesses tracking if not exists
+			if (!gs.currentTurnWrongGuesses) {
+				gs.currentTurnWrongGuesses = [];
+			}
+
+			// Add to wrong guesses list
+			gs.currentTurnWrongGuesses.push({ word, guesser });
+
+			// Broadcast to all players
+			io.to(roomCode).emit("wrong-guess-sync", {
+				word,
+				guesser,
+				wrongGuesses: gs.currentTurnWrongGuesses,
 			});
 		}
 	});
@@ -545,20 +590,57 @@ io.on("connection", (socket) => {
 				} else {
 					// Remove player from teams if game has started
 					if (room.gameState) {
-						room.gameState.teams.forEach((team) => {
+						let describerLeft = false;
+						const currentTeamIndex = room.gameState.currentTeamIndex;
+
+						room.gameState.teams.forEach((team, teamIndex) => {
 							const teamPlayerIndex = team.players.indexOf(
 								disconnectedPlayer.name
 							);
 							if (teamPlayerIndex !== -1) {
+								// Check if the disconnecting player is the current describer
+								if (
+									teamIndex === currentTeamIndex &&
+									room.gameState.currentDescriberIndex[teamIndex] ===
+										teamPlayerIndex
+								) {
+									describerLeft = true;
+								}
+
 								team.players.splice(teamPlayerIndex, 1);
+
+								// Adjust describer index if needed
+								if (
+									room.gameState.currentDescriberIndex[teamIndex] >=
+									team.players.length
+								) {
+									room.gameState.currentDescriberIndex[teamIndex] = 0;
+								}
 							}
 						});
+
+						// If describer left during active turn, skip to next describer on the same team
+						if (describerLeft && room.gameState.gameStarted) {
+							const team = room.gameState.teams[currentTeamIndex];
+							if (team.players.length > 0) {
+								// Move to next describer on the same team
+								room.gameState.currentDescriberIndex[currentTeamIndex] =
+									room.gameState.currentDescriberIndex[currentTeamIndex] %
+									team.players.length;
+
+								io.to(roomCode).emit("describer-left", {
+									message: "Describer disconnected. Moving to next teammate.",
+									gameState: room.gameState,
+								});
+							}
+						}
 					}
 					// Regular player left, notify others
 					io.to(roomCode).emit("player-left", {
 						socketId: socket.id,
 						playerName: disconnectedPlayer.name,
 						room,
+						gameState: room.gameState, // Send updated game state
 					});
 				}
 			}

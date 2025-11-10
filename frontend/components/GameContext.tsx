@@ -152,6 +152,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     newSocket.on('player-left', (data) => {
       setPlayers(data.room.players)
+      // Update game state if provided (during active game)
+      if (data.gameState) {
+        setGameState(data.gameState)
+      }
     })
 
     newSocket.on('team-updated', (data) => {
