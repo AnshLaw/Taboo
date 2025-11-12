@@ -11,9 +11,10 @@ const io = socketIO(server, {
 	cors: {
 		origin: [
 			"*",
+			"http://localhost:3001",
+			"https://taboo-inferno.vercel.app",
 			"https://discord.com",
 			"https://*.discord.com",
-			"https://taboo-257s.onrender.com",
 		],
 		methods: ["GET", "POST"],
 		credentials: true,

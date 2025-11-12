@@ -111,7 +111,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'
-    const newSocket = io(serverUrl)
+    console.log('Connecting to server:', serverUrl)
+    
+    const newSocket = io(serverUrl, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    })
 
     newSocket.on('connect', () => {
       console.log('Connected to server')
