@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { io, Socket } from 'socket.io-client'
+import { setupDiscordSdk, getDiscordUser, isDiscordActivity } from '@/lib/discordSdk'
 
 interface Player {
   id: string
@@ -83,6 +84,30 @@ export function GameProvider({ children }: { children: ReactNode }) {
     skippedWords: [],
     playerContributions: {}
   })
+
+  // Initialize Discord SDK if running as Discord Activity
+  useEffect(() => {
+    const initDiscord = async () => {
+      if (isDiscordActivity()) {
+        try {
+          const sdk = await setupDiscordSdk()
+          if (sdk) {
+            console.log('Discord Activity initialized')
+            // Get Discord user info and auto-set player name
+            const user = await getDiscordUser()
+            if (user) {
+              setPlayerName(user.username)
+              console.log('Discord user:', user.username)
+            }
+          }
+        } catch (error) {
+          console.error('Discord initialization failed:', error)
+        }
+      }
+    }
+    
+    initDiscord()
+  }, [])
 
   useEffect(() => {
     const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'

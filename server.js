@@ -9,8 +9,14 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
 	cors: {
-		origin: "*",
+		origin: [
+			"*",
+			"https://discord.com",
+			"https://*.discord.com",
+			"https://taboo-257s.onrender.com",
+		],
 		methods: ["GET", "POST"],
+		credentials: true,
 	},
 });
 
